@@ -1,7 +1,7 @@
 {
   "name": "breakmywallet-basic",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +11,6 @@
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "framer-motion": "^11.0.0",
     "lucide-react": "^0.469.0"
   },
   "devDependencies": {

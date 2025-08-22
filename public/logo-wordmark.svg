@@ -1,0 +1,15 @@
+<svg width="800" height="160" viewBox="0 0 800 160" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="160" fill="#000"/>
+  <text x="140" y="105" font-family="Arial Black, Arial, sans-serif" font-size="72" fill="#fff" letter-spacing="1.5">BREAKMYWALLET</text>
+  <g transform="translate(32,16)">
+    <defs>
+      <linearGradient id="gw" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#12a4ff"/>
+        <stop offset="100%" stop-color="#0b6fb5"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="16" width="88" height="88" rx="16" fill="url(#gw)" stroke="#fff" stroke-width="6"/>
+    <circle cx="72" cy="60" r="28" fill="#000" stroke="#fff" stroke-width="6"/>
+    <text x="72" y="72" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="28" fill="#fff">$</text>
+  </g>
+</svg>
