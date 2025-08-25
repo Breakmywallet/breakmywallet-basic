@@ -8,7 +8,6 @@ import { ArrowRight, ShoppingBag, Youtube, Instagram, Mail } from "lucide-react"
 export default function Page() {
   return (
     <div id="home">
-      {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-black/40 border-b border-white/10">
         <div className="container">
           <div className="flex h-16 items-center justify-between">
@@ -26,7 +25,6 @@ export default function Page() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0"
              style={{ background:
@@ -52,15 +50,12 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Social Feeds */}
       <section id="social" className="container py-16">
         <h2 className="text-2xl sm:text-3xl font-bold">Latest from the Garage</h2>
 
-        {/* IG helper (only needed for SnapWidget; harmless otherwise) */}
         <Script src="https://snapwidget.com/js/snapwidget.js" strategy="afterInteractive" />
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
-          {/* Instagram Embed — paste your widget src below */}
           <div className="card p-4">
             <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
               <Instagram className="h-5 w-5" /> Instagram
@@ -78,7 +73,6 @@ export default function Page() {
             <p className="text-[11px] text-zinc-500 mt-2">Tip: use LightWidget/SnapWidget/EmbedSocial src here.</p>
           </div>
 
-          {/* YouTube Uploads Playlist — your channel is wired */}
           <div className="card p-4">
             <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
               <Youtube className="h-5 w-5" /> YouTube
@@ -97,83 +91,15 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Shop */}
       <section id="shop" className="container py-16">
         <div className="card p-6">
           <h2 className="text-2xl sm:text-3xl font-bold">Shop</h2>
-          <p className="text-zinc-300 mt-2">Our latest drop:</p>
-
-          <div
-            className="mt-6"
-            dangerouslySetInnerHTML={{
-              __html: `
-<div id='product-component-1756128579018'></div>
-<script type="text/javascript">
-(function () {
-  var scriptURL = 'https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js';
-  if (window.ShopifyBuy) {
-    if (window.ShopifyBuy.UI) { ShopifyBuyInit(); } else { loadScript(); }
-  } else { loadScript(); }
-  function loadScript() {
-    var script = document.createElement('script');
-    script.async = true; script.src = scriptURL;
-    (document.head || document.body).appendChild(script);
-    script.onload = ShopifyBuyInit;
-  }
-  function ShopifyBuyInit() {
-    var client = ShopifyBuy.buildClient({
-      domain: 'pn0jcb-5f.myshopify.com',
-      storefrontAccessToken: 'b18cb9272b05835d94265a6c09aee73f',
-    });
-    ShopifyBuy.UI.onReady(client).then(function (ui) {
-      ui.createComponent('product', {
-        id: '7424745898059',
-        node: document.getElementById('product-component-1756128579018'),
-        moneyFormat: '%24%7B%7Bamount%7D%7D',
-        options: {
-          product: {
-            styles: {
-              product: { "@media (min-width: 601px)": { "max-width": "100%", "margin-bottom": "24px" } },
-              button: {
-                ":hover": { "background-color": "#0079b6" },
-                "background-color": "#0086ca",
-                ":focus": { "background-color": "#0079b6" }
-              }
-            },
-            text: { button: "Add to cart" }
-          },
-          cart: {
-            styles: {
-              button: {
-                ":hover": { "background-color": "#0079b6" },
-                "background-color": "#0086ca",
-                ":focus": { "background-color": "#0079b6" }
-              }
-            },
-            text: { total: "Subtotal", button: "Checkout" }
-          },
-          toggle: {
-            styles: {
-              toggle: {
-                "background-color": "#0086ca",
-                ":hover": { "background-color": "#0079b6" },
-                ":focus": { "background-color": "#0079b6" }
-              }
-            }
-          }
-        }
-      });
-    });
-  }
-})();
-</script>
-              `,
-            }}
-          />
+          <p className="text-zinc-300 mt-2">
+            Hooking this up to Shopify next. If you’ve generated Buy Button embeds, paste them here.
+          </p>
         </div>
       </section>
 
-      {/* Contact */}
       <section id="contact" className="container py-16">
         <div className="card p-6">
           <h3 className="text-2xl font-bold">Contact</h3>
@@ -186,7 +112,6 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-white/10">
         <div className="container py-10 text-sm text-zinc-400 flex items-center justify-between">
           <div className="flex items-center gap-2">
