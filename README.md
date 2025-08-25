@@ -1,13 +1,12 @@
-# BreakMyWallet — Blue/Black Branded Starter
+# BreakMyWallet — Full Homepage (Events + Shopify Buy Button)
 
-This package contains a branded landing page with Instagram + YouTube sections.
+Includes:
+- Events section with filters (CT default) — edit `app/lib/events.ts`
+- Shopify Buy Button embedded in Shop section
+- Social (Instagram iframe slot + YouTube uploads)
+- Blue/black theme
 
-## What you still need to do
-- Replace `PASTE_YOUR_INSTAGRAM_WIDGET_SRC_HERE` in `app/page.tsx` with your widget src.
-- (Optional) Add Shopify Buy Button embed into the Shop section.
-- Swap `/public/logo-*.svg` with your final logo files if desired.
-
-## Deploy
-Push to GitHub, import into Vercel, and point DNS:
-- A @ -> 76.76.21.21
-- CNAME www -> cname.vercel-dns.com
+Update steps:
+1) Edit `app/lib/events.ts` to add/change events.
+2) Replace Instagram iframe `src` in `app/page.tsx` when ready.
+3) Commit to GitHub; Vercel redeploys.

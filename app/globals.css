@@ -1,21 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Brand palette */
-:root{
-  --bmw-bg:#000000;
-  --bmw-fg:#ffffff;
-  --bmw-blue:#12a4ff;
-  --bmw-blue-2:#0b6fb5;
-}
-
+:root{--bmw-bg:#000;--bmw-fg:#fff;--bmw-blue:#12a4ff;--bmw-blue-2:#0b6fb5}
 html,body{height:100%}
 body{background:var(--bmw-bg);color:var(--bmw-fg);font-feature-settings:"ss01" on,"liga" on}
-.container{ @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8; }
-.btn{ @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition; }
-.btn-primary{ background:var(--bmw-blue); color:#000; }
-.btn-primary:hover{ filter:brightness(1.1) }
-.btn-ghost{ @apply border border-white/20 text-white; }
-.card{ @apply rounded-2xl border border-white/10 bg-zinc-900/60; }
-.link{ @apply text-zinc-300 hover:text-white; }
+.container{margin-left:auto;margin-right:auto;max-width:80rem;padding-left:1rem;padding-right:1rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;border-radius:.75rem;padding:.5rem 1rem;font-weight:500;transition:filter .15s}
+.btn-primary{background:var(--bmw-blue);color:#000}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-ghost{border:1px solid rgba(255,255,255,.2);color:#fff}
+.card{border:1px solid rgba(255,255,255,.1);background:rgba(24,24,27,.6);border-radius:1rem}
+.link{color:#d4d4d8} .link:hover{color:#fff}
