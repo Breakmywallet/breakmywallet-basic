@@ -5,49 +5,74 @@ export async function GET() {
 const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 
-async function kvCommand(command) {
-  const response = await fetch(KV_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${KV_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
+function kvHeaders() {
+  return {
+    Authorization: `Bearer ${KV_TOKEN}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function kvGet(key) {
+  const response = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
+    method: "GET",
+    headers: kvHeaders(),
   });
 
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`KV command failed: ${response.status} ${text}`);
+    throw new Error(`KV GET failed: ${response.status} ${text}`);
   }
 
-  return text ? JSON.parse(text) : null;
-}
+  const json = text ? JSON.parse(text) : null;
 
-async function kvGet(key) {
-  const result = await kvCommand(["GET", key]);
-  if (!result || result.result == null) return null;
+  if (!json || json.result == null) return null;
 
   try {
-    return JSON.parse(result.result);
+    return JSON.parse(json.result);
   } catch {
     return null;
   }
 }
 
 async function kvSet(key, value) {
-  await kvCommand(["SET", key, JSON.stringify(value)]);
+  const response = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: kvHeaders(),
+    body: JSON.stringify({
+      value: JSON.stringify(value),
+    }),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`KV SET failed: ${response.status} ${text}`);
+  }
+
+  return text ? JSON.parse(text) : null;
 }
 
 async function kvDelete(key) {
-  await kvCommand(["DEL", key]);
+  const response = await fetch(`${KV_URL}/del/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: kvHeaders(),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`KV DEL failed: ${response.status} ${text}`);
+  }
+
+  return text ? JSON.parse(text) : null;
 }
 
-async function transcribeAudio(mediaBuffer, mediaType) {
+async function transcribeAudio(mediaArrayBuffer, mediaType) {
   const form = new FormData();
   form.append(
     "file",
-    new Blob([mediaBuffer], { type: mediaType || "audio/ogg" }),
+    new Blob([mediaArrayBuffer], { type: mediaType || "audio/ogg" }),
     "audio.ogg"
   );
   form.append("model", "gpt-4o-mini-transcribe");
@@ -94,6 +119,16 @@ async function sendEmailReport(reportText) {
   return text;
 }
 
+function newSession(from) {
+  return {
+    from,
+    startedAt: new Date().toISOString(),
+    textMessages: [],
+    transcriptions: [],
+    photos: [],
+  };
+}
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -108,14 +143,8 @@ export async function POST(req) {
 
     let session = await kvGet(sessionKey);
 
-    if (!session) {
-      session = {
-        from,
-        startedAt: new Date().toISOString(),
-        textMessages: [],
-        transcriptions: [],
-        photos: [],
-      };
+    if (!session && bodyLower !== "done") {
+      session = newSession(from);
     }
 
     console.log("---- NEW MESSAGE ----");
@@ -123,12 +152,15 @@ export async function POST(req) {
     console.log("Text:", rawBody);
     console.log("Media count:", numMedia);
 
-    // Store normal text messages, but don't store "done"
+    if (!session && bodyLower === "done") {
+      console.log("⚠️ No active session for done trigger");
+      return new Response("No active session", { status: 200 });
+    }
+
     if (bodyTrimmed && bodyLower !== "done") {
       session.textMessages.push(bodyTrimmed);
     }
 
-    // Process every media item in this webhook
     for (let i = 0; i < numMedia; i++) {
       const mediaUrl = (formData.get(`MediaUrl${i}`) || "").toString();
       const mediaType = (formData.get(`MediaContentType${i}`) || "").toString();
@@ -146,20 +178,19 @@ export async function POST(req) {
         },
       });
 
-      const mediaText = await mediaResponse.text();
-
       if (!mediaResponse.ok) {
-        console.log(`❌ Failed to download media ${i}:`, mediaText);
+        const mediaError = await mediaResponse.text();
+        console.log(`❌ Failed to download media ${i}:`, mediaError);
         continue;
       }
 
-      const mediaBuffer = Buffer.from(mediaText, "binary");
+      const mediaArrayBuffer = await mediaResponse.arrayBuffer();
 
       if (mediaType.includes("audio")) {
         console.log("🎤 Audio received");
 
         try {
-          const transcription = await transcribeAudio(mediaBuffer, mediaType);
+          const transcription = await transcribeAudio(mediaArrayBuffer, mediaType);
           console.log("📝 Transcription:", transcription);
 
           if (transcription) {
@@ -173,20 +204,19 @@ export async function POST(req) {
 
       if (mediaType.includes("image")) {
         console.log("📸 Photo received");
+
         session.photos.push({
           index: session.photos.length + 1,
-          mediaType,
           url: mediaUrl,
+          mediaType,
           receivedAt: new Date().toISOString(),
         });
       }
     }
 
-    // Save session after every incoming message/media event
     await kvSet(sessionKey, session);
-    console.log("💾 Session saved:", JSON.stringify(session, null, 2));
+    console.log("💾 Session saved");
 
-    // Only compile + email when sender texts "done"
     if (bodyLower === "done") {
       const latestSession = await kvGet(sessionKey);
 
@@ -210,12 +240,10 @@ ${
     : "(none)"
 }
 
-Photos:
+Photos Received:
 ${
   latestSession?.photos?.length
-    ? latestSession.photos
-        .map((p, i) => `${i + 1}. ${p.url}`)
-        .join("\n")
+    ? latestSession.photos.map((p, i) => `${i + 1}. ${p.url}`).join("\n")
     : "(none)"
 }
 `;
@@ -226,7 +254,7 @@ ${
       console.log("📧 Resend response:", resendResult);
 
       await kvDelete(sessionKey);
-      console.log("🧹 Session cleared");
+      console.log("🧹 Session deleted");
 
       return new Response("Report sent", { status: 200 });
     }
