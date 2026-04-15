@@ -1,7 +1,10 @@
+export async function GET() {
+  return new Response("API is alive", { status: 200 });
+}
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
-
     const bodyText = formData.get("Body") || "";
 
     console.log("Incoming message:", bodyText);
