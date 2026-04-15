@@ -22,7 +22,15 @@ export async function POST(req) {
       console.log(`Media ${i}:`, mediaUrl);
       console.log(`Type ${i}:`, mediaType);
 
-      const mediaResponse = await fetch(mediaUrl);
+      const mediaResponse = await fetch(mediaUrl, {
+        headers: {
+          Authorization:
+            "Basic " +
+            Buffer.from(
+              `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+            ).toString("base64"),
+        },
+      });
 
       if (!mediaResponse.ok) {
         const errorText = await mediaResponse.text();
@@ -31,7 +39,6 @@ export async function POST(req) {
       }
 
       const mediaBuffer = await mediaResponse.arrayBuffer();
-
       console.log(`Downloaded media ${i}, size:`, mediaBuffer.byteLength);
 
       if (mediaType.includes("audio")) {
