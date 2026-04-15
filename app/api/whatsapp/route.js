@@ -25,12 +25,27 @@ export async function POST(req) {
   console.log(`Downloaded media ${i}, size:`, buffer.byteLength);
 
   if (mediaType.includes("audio")) {
-    console.log("🎤 This is a voice note");
-  }
+  console.log("🎤 This is a voice note");
 
-  if (mediaType.includes("image")) {
-    console.log("📸 This is a photo");
-  }
+  const audioResponse = await fetch(mediaUrl);
+  const audioBuffer = await audioResponse.arrayBuffer();
+
+  const openaiResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: (() => {
+      const formData = new FormData();
+      formData.append("file", new Blob([audioBuffer]), "audio.ogg");
+      formData.append("model", "gpt-4o-mini-transcribe");
+      return formData;
+    })(),
+  });
+
+  const result = await openaiResponse.json();
+
+  console.log("📝 Transcription:", result.text);
 }
 
     return new Response("OK", { status: 200 });
