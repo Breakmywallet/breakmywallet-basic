@@ -13,12 +13,18 @@ export async function POST(req) {
 
     // Loop through media (photos/audio)
     for (let i = 0; i < numMedia; i++) {
-      const mediaUrl = formData.get(`MediaUrl${i}`);
-      const mediaType = formData.get(`MediaContentType${i}`);
+  const mediaUrl = formData.get(`MediaUrl${i}`);
+  const mediaType = formData.get(`MediaContentType${i}`);
 
-      console.log(`Media ${i}:`, mediaUrl);
-      console.log(`Type ${i}:`, mediaType);
-    }
+  console.log(`Media ${i}:`, mediaUrl);
+  console.log(`Type ${i}:`, mediaType);
+
+  // Download the file
+  const response = await fetch(mediaUrl);
+  const buffer = await response.arrayBuffer();
+
+  console.log(`Downloaded media ${i}, size:`, buffer.byteLength);
+}
 
     return new Response("OK", { status: 200 });
 
