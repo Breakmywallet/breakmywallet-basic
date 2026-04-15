@@ -1,122 +1,105 @@
-export async function GET() {
-  return new Response("API is alive", { status: 200 });
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const KV_URL = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+
+async function kvGet(key) {
+  const res = await fetch(`${KV_URL}/get/${key}`, {
+    headers: { Authorization: `Bearer ${KV_TOKEN}` },
+  });
+  const data = await res.json();
+  return data.result ? JSON.parse(data.result) : null;
 }
 
-export async function POST(req) {
+async function kvSet(key, value) {
+  await fetch(`${KV_URL}/set/${key}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${KV_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ value: JSON.stringify(value) }),
+  });
+}
+
+async function kvDelete(key) {
+  await fetch(`${KV_URL}/del/${key}`, {
+    headers: { Authorization: `Bearer ${KV_TOKEN}` },
+  });
+}
+
+export default async function handler(req, res) {
   try {
-    const formData = await req.formData();
+    const from = req.body.From || 'unknown';
+    const text = (req.body.Body || '').trim().toLowerCase();
+    const mediaUrl = req.body.MediaUrl0;
 
-    const body = formData.get("Body") || "";
-    const from = formData.get("From") || "";
-    const numMedia = Number(formData.get("NumMedia") || 0);
+    const key = `session:${from}`;
 
-    console.log("---- NEW MESSAGE ----");
-    console.log("From:", from);
-    console.log("Text:", body);
-    console.log("Media count:", numMedia);
+    let session = await kvGet(key);
 
-    let transcriptionText = "";
-    let photoNotes = [];
+    if (!session) {
+      session = {
+        messages: [],
+        photos: [],
+        transcriptions: [],
+        startTime: new Date().toISOString(),
+      };
+    }
 
-    for (let i = 0; i < numMedia; i++) {
-      const mediaUrl = formData.get(`MediaUrl${i}`);
-      const mediaType = formData.get(`MediaContentType${i}`) || "";
+    // 📸 PHOTO
+    if (mediaUrl) {
+      session.photos.push(mediaUrl);
+    }
 
-      const mediaResponse = await fetch(mediaUrl, {
-        headers: {
-          Authorization:
-            "Basic " +
-            Buffer.from(
-              `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-            ).toString("base64"),
-        },
+    // 🎤 VOICE TRANSCRIPTION (already coming from your current setup)
+    if (req.body.TranscriptionText) {
+      session.transcriptions.push(req.body.TranscriptionText);
+    }
+
+    // 💬 TEXT MESSAGE
+    if (text && text !== 'done') {
+      session.messages.push(text);
+    }
+
+    // 🧠 SAVE SESSION
+    await kvSet(key, session);
+
+    // ✅ DONE TRIGGER
+    if (text === 'done') {
+      const report = `
+Field Report
+------------------------
+From: ${from}
+Started: ${session.startTime}
+
+TEXT NOTES:
+${session.messages.join('\n') || 'None'}
+
+VOICE NOTES:
+${session.transcriptions.join('\n') || 'None'}
+
+PHOTOS:
+${session.photos.join('\n') || 'None'}
+      `;
+
+      await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: 'paulvignos@gmail.com',
+        subject: 'Field Report Completed',
+        text: report,
       });
 
-      if (!mediaResponse.ok) {
-        const mediaError = await mediaResponse.text();
-        console.log(`❌ Failed to download media ${i}:`, mediaError);
-        continue;
-      }
+      await kvDelete(key);
 
-      const mediaBuffer = await mediaResponse.arrayBuffer();
-
-      if (mediaType.includes("audio")) {
-        const openAiForm = new FormData();
-        openAiForm.append(
-          "file",
-          new Blob([mediaBuffer], { type: mediaType || "audio/ogg" }),
-          "audio.ogg"
-        );
-        openAiForm.append("model", "gpt-4o-mini-transcribe");
-
-        const response = await fetch(
-          "https://api.openai.com/v1/audio/transcriptions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            },
-            body: openAiForm,
-          }
-        );
-
-        if (!response.ok) {
-          const aiError = await response.text();
-          console.log("❌ OpenAI transcription error:", aiError);
-        } else {
-          const result = await response.json();
-          transcriptionText = result.text || "";
-          console.log("📝 Transcription:", transcriptionText);
-        }
-      }
-
-      if (mediaType.includes("image")) {
-        photoNotes.push(`Photo ${i + 1} received`);
-      }
+      return res.status(200).send('Report sent');
     }
 
-    const report = `Field Report
-
-From: ${from}
-Time: ${new Date().toLocaleString()}
-
-Text Message:
-${body || "(none)"}
-
-Voice Transcription:
-${transcriptionText || "(none)"}
-
-Photos:
-${photoNotes.length ? photoNotes.join("\n") : "(none)"}
-`;
-
-    console.log("📄 REPORT:", report);
-
-    const resendResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "onboarding@resend.dev",
-        to: ["paulvignos@gmail.com"], // replace with the exact inbox you want
-        subject: "New Field Report",
-        text: report,
-      }),
-    });
-
-    const resendText = await resendResponse.text();
-    console.log("📧 Resend status:", resendResponse.status);
-    console.log("📧 Resend response:", resendText);
-
-    if (!resendResponse.ok) {
-      return new Response("Email failed", { status: 500 });
-    }
-
-    return new Response("OK", { status: 200 });
-  } catch (error) {
-    console.error("Webhook error:", error);
-    return new Response("Error", { status: 500 });
+    return res.status(200).send('Saved');
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send('Error');
   }
 }
