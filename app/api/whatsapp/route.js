@@ -1,13 +1,24 @@
-export async function GET() {
-  return new Response("API is alive", { status: 200 });
-}
-
 export async function POST(req) {
   try {
     const formData = await req.formData();
-    const bodyText = formData.get("Body") || "";
 
-    console.log("Incoming message:", bodyText);
+    const body = formData.get("Body");
+    const from = formData.get("From");
+    const numMedia = formData.get("NumMedia");
+
+    console.log("---- NEW MESSAGE ----");
+    console.log("From:", from);
+    console.log("Text:", body);
+    console.log("Media count:", numMedia);
+
+    // Loop through media (photos/audio)
+    for (let i = 0; i < numMedia; i++) {
+      const mediaUrl = formData.get(`MediaUrl${i}`);
+      const mediaType = formData.get(`MediaContentType${i}`);
+
+      console.log(`Media ${i}:`, mediaUrl);
+      console.log(`Type ${i}:`, mediaType);
+    }
 
     return new Response("OK", { status: 200 });
 
