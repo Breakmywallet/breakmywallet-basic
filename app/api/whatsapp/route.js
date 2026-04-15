@@ -95,7 +95,7 @@ ${photoNotes.length ? photoNotes.join("\n") : "(none)"}
       },
       body: JSON.stringify({
         from: "onboarding@resend.dev",
-        to: ["your@email.com"], // 🔴 CHANGE THIS
+        to: ["paul@gutterguys.com"], // 🔴 CHANGE THIS
         subject: "New Field Report",
         text: report,
       }),
