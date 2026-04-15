@@ -32,11 +32,14 @@ export async function POST(req) {
         },
       });
 
-      if (!mediaResponse.ok) continue;
+      if (!mediaResponse.ok) {
+        const mediaError = await mediaResponse.text();
+        console.log(`❌ Failed to download media ${i}:`, mediaError);
+        continue;
+      }
 
       const mediaBuffer = await mediaResponse.arrayBuffer();
 
-      // 🎤 TRANSCRIBE AUDIO
       if (mediaType.includes("audio")) {
         const openAiForm = new FormData();
         openAiForm.append(
@@ -57,19 +60,22 @@ export async function POST(req) {
           }
         );
 
-        const result = await response.json();
-        transcriptionText = result.text || "";
+        if (!response.ok) {
+          const aiError = await response.text();
+          console.log("❌ OpenAI transcription error:", aiError);
+        } else {
+          const result = await response.json();
+          transcriptionText = result.text || "";
+          console.log("📝 Transcription:", transcriptionText);
+        }
       }
 
-      // 📸 IMAGE PLACEHOLDER
       if (mediaType.includes("image")) {
         photoNotes.push(`Photo ${i + 1} received`);
       }
     }
 
-    // 🧠 BUILD REPORT
-    const report = `
-Field Report
+    const report = `Field Report
 
 From: ${from}
 Time: ${new Date().toLocaleString()}
@@ -86,8 +92,7 @@ ${photoNotes.length ? photoNotes.join("\n") : "(none)"}
 
     console.log("📄 REPORT:", report);
 
-    // 📧 SEND EMAIL (NO SDK — PURE FETCH)
-    await fetch("https://api.resend.com/emails", {
+    const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
@@ -95,11 +100,19 @@ ${photoNotes.length ? photoNotes.join("\n") : "(none)"}
       },
       body: JSON.stringify({
         from: "onboarding@resend.dev",
-        to: ["paul@gutterguys.com"], // 🔴 CHANGE THIS
+        to: ["paulvignos@gmail.com"], // replace with the exact inbox you want
         subject: "New Field Report",
         text: report,
       }),
     });
+
+    const resendText = await resendResponse.text();
+    console.log("📧 Resend status:", resendResponse.status);
+    console.log("📧 Resend response:", resendText);
+
+    if (!resendResponse.ok) {
+      return new Response("Email failed", { status: 500 });
+    }
 
     return new Response("OK", { status: 200 });
   } catch (error) {
