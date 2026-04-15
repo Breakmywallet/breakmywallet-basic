@@ -19,11 +19,18 @@ export async function POST(req) {
   console.log(`Media ${i}:`, mediaUrl);
   console.log(`Type ${i}:`, mediaType);
 
-  // Download the file
   const response = await fetch(mediaUrl);
   const buffer = await response.arrayBuffer();
 
   console.log(`Downloaded media ${i}, size:`, buffer.byteLength);
+
+  if (mediaType.includes("audio")) {
+    console.log("🎤 This is a voice note");
+  }
+
+  if (mediaType.includes("image")) {
+    console.log("📸 This is a photo");
+  }
 }
 
     return new Response("OK", { status: 200 });
