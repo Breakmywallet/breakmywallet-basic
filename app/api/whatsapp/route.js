@@ -145,6 +145,7 @@ export async function POST(req) {
 
     if (!session && bodyLower !== "done") {
       session = newSession(from);
+      console.log("🆕 New session created");
     }
 
     console.log("---- NEW MESSAGE ----");
@@ -159,6 +160,7 @@ export async function POST(req) {
 
     if (bodyTrimmed && bodyLower !== "done") {
       session.textMessages.push(bodyTrimmed);
+      console.log("💬 Text saved");
     }
 
     for (let i = 0; i < numMedia; i++) {
@@ -204,13 +206,7 @@ export async function POST(req) {
 
       if (mediaType.includes("image")) {
         console.log("📸 Photo received");
-
-        session.photos.push({
-          index: session.photos.length + 1,
-          url: mediaUrl,
-          mediaType,
-          receivedAt: new Date().toISOString(),
-        });
+        session.photos.push(mediaUrl);
       }
     }
 
@@ -243,7 +239,7 @@ ${
 Photos Received:
 ${
   latestSession?.photos?.length
-    ? latestSession.photos.map((p, i) => `${i + 1}. ${p.url}`).join("\n")
+    ? latestSession.photos.map((p, i) => `${i + 1}. ${p}`).join("\n")
     : "(none)"
 }
 `;
