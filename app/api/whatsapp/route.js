@@ -15,12 +15,12 @@ export async function POST(req) {
     console.log("Text:", body);
     console.log("Media count:", numMedia);
 
+    let transcriptionText = "";
+    let photoNotes = [];
+
     for (let i = 0; i < numMedia; i++) {
       const mediaUrl = formData.get(`MediaUrl${i}`);
       const mediaType = formData.get(`MediaContentType${i}`) || "";
-
-      console.log(`Media ${i}:`, mediaUrl);
-      console.log(`Type ${i}:`, mediaType);
 
       const mediaResponse = await fetch(mediaUrl, {
         headers: {
@@ -32,18 +32,12 @@ export async function POST(req) {
         },
       });
 
-      if (!mediaResponse.ok) {
-        const errorText = await mediaResponse.text();
-        console.log(`❌ Failed to download media ${i}:`, errorText);
-        continue;
-      }
+      if (!mediaResponse.ok) continue;
 
       const mediaBuffer = await mediaResponse.arrayBuffer();
-      console.log(`Downloaded media ${i}, size:`, mediaBuffer.byteLength);
 
+      // 🎤 TRANSCRIBE AUDIO
       if (mediaType.includes("audio")) {
-        console.log("🎤 This is a voice note");
-
         const openAiForm = new FormData();
         openAiForm.append(
           "file",
@@ -52,7 +46,7 @@ export async function POST(req) {
         );
         openAiForm.append("model", "gpt-4o-mini-transcribe");
 
-        const openaiResponse = await fetch(
+        const response = await fetch(
           "https://api.openai.com/v1/audio/transcriptions",
           {
             method: "POST",
@@ -63,20 +57,49 @@ export async function POST(req) {
           }
         );
 
-        if (!openaiResponse.ok) {
-          const errorText = await openaiResponse.text();
-          console.log("❌ OpenAI transcription error:", errorText);
-        } else {
-          const result = await openaiResponse.json();
-          console.log("OpenAI raw response:", result);
-          console.log("📝 Transcription:", result.text || "(no text returned)");
-        }
+        const result = await response.json();
+        transcriptionText = result.text || "";
       }
 
+      // 📸 IMAGE PLACEHOLDER
       if (mediaType.includes("image")) {
-        console.log("📸 This is a photo");
+        photoNotes.push(`Photo ${i + 1} received`);
       }
     }
+
+    // 🧠 BUILD REPORT
+    const report = `
+Field Report
+
+From: ${from}
+Time: ${new Date().toLocaleString()}
+
+Text Message:
+${body || "(none)"}
+
+Voice Transcription:
+${transcriptionText || "(none)"}
+
+Photos:
+${photoNotes.length ? photoNotes.join("\n") : "(none)"}
+`;
+
+    console.log("📄 REPORT:", report);
+
+    // 📧 SEND EMAIL (NO SDK — PURE FETCH)
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "onboarding@resend.dev",
+        to: ["your@email.com"], // 🔴 CHANGE THIS
+        subject: "New Field Report",
+        text: report,
+      }),
+    });
 
     return new Response("OK", { status: 200 });
   } catch (error) {
