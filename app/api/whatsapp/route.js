@@ -68,6 +68,24 @@ async function kvDelete(key) {
   return text ? JSON.parse(text) : null;
 }
 
+function normalizeSession(from, session) {
+  return {
+    from: session?.from || from,
+    startedAt: session?.startedAt || new Date().toISOString(),
+    textMessages: Array.isArray(session?.textMessages)
+      ? session.textMessages
+      : Array.isArray(session?.messages)
+      ? session.messages
+      : [],
+    transcriptions: Array.isArray(session?.transcriptions)
+      ? session.transcriptions
+      : [],
+    photos: Array.isArray(session?.photos)
+      ? session.photos
+      : [],
+  };
+}
+
 async function transcribeAudio(mediaArrayBuffer, mediaType) {
   const form = new FormData();
   form.append(
@@ -119,16 +137,6 @@ async function sendEmailReport(reportText) {
   return text;
 }
 
-function newSession(from) {
-  return {
-    from,
-    startedAt: new Date().toISOString(),
-    textMessages: [],
-    transcriptions: [],
-    photos: [],
-  };
-}
-
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -142,21 +150,12 @@ export async function POST(req) {
     const sessionKey = `session:${from}`;
 
     let session = await kvGet(sessionKey);
-
-    if (!session && bodyLower !== "done") {
-      session = newSession(from);
-      console.log("🆕 New session created");
-    }
+    session = normalizeSession(from, session);
 
     console.log("---- NEW MESSAGE ----");
     console.log("From:", from);
     console.log("Text:", rawBody);
     console.log("Media count:", numMedia);
-
-    if (!session && bodyLower === "done") {
-      console.log("⚠️ No active session for done trigger");
-      return new Response("No active session", { status: 200 });
-    }
 
     if (bodyTrimmed && bodyLower !== "done") {
       session.textMessages.push(bodyTrimmed);
@@ -210,36 +209,32 @@ export async function POST(req) {
       }
     }
 
-    await kvSet(sessionKey, session);
-    console.log("💾 Session saved");
-
+    // If sender says done, send report using current normalized session
     if (bodyLower === "done") {
-      const latestSession = await kvGet(sessionKey);
-
       const report = `Field Report
 
-From: ${latestSession?.from || from}
-Started: ${latestSession?.startedAt || new Date().toISOString()}
+From: ${session.from}
+Started: ${session.startedAt}
 Completed: ${new Date().toISOString()}
 
 Text Messages:
 ${
-  latestSession?.textMessages?.length
-    ? latestSession.textMessages.map((t, i) => `${i + 1}. ${t}`).join("\n")
+  session.textMessages.length
+    ? session.textMessages.map((t, i) => `${i + 1}. ${t}`).join("\n")
     : "(none)"
 }
 
 Voice Transcriptions:
 ${
-  latestSession?.transcriptions?.length
-    ? latestSession.transcriptions.map((t, i) => `${i + 1}. ${t}`).join("\n")
+  session.transcriptions.length
+    ? session.transcriptions.map((t, i) => `${i + 1}. ${t}`).join("\n")
     : "(none)"
 }
 
 Photos Received:
 ${
-  latestSession?.photos?.length
-    ? latestSession.photos.map((p, i) => `${i + 1}. ${p}`).join("\n")
+  session.photos.length
+    ? session.photos.map((p, i) => `${i + 1}. ${p}`).join("\n")
     : "(none)"
 }
 `;
@@ -254,6 +249,9 @@ ${
 
       return new Response("Report sent", { status: 200 });
     }
+
+    await kvSet(sessionKey, session);
+    console.log("💾 Session saved");
 
     return new Response("Saved", { status: 200 });
   } catch (error) {
